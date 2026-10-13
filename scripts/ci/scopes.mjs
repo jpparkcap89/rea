@@ -4,6 +4,12 @@
 export const SCOPES = {
   // Apple artifact CLI/MCP lane on macOS, including its focused regressions.
   apple: [
+    "src/artifacts/InesArtifactReader.ts",
+    "src/domain/inesContainer.ts",
+    "tests/fixtures/ines.ts",
+    "tests/acceptance/inesContainer.test.ts",
+    "tests/boundary/filesystem/inesArtifact.test.ts",
+    "tests/boundary/filesystem/inesCancellation.test.ts",
     "src/native/Apple*",
     "src/native/NativeMacOS*",
     "src/native/NativeUi*",
