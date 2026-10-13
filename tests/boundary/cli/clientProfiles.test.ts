@@ -263,6 +263,51 @@ cliTest(
 );
 
 cliTest(
+  "Gemini matches allowlist spellings independently of their policy order",
+  async ({ cli }) => {
+    const home = await createTestTempDirectory("rea-gemini-case-");
+    const system = join(home, "system.json");
+    const defaults = join(home, "defaults.json");
+    await writeFile(system, JSON.stringify({ mcp: { allowed: ["REA"] } }));
+    const environment = {
+      HOME: home,
+      USERPROFILE: home,
+      GEMINI_CLI_SYSTEM_SETTINGS_PATH: system,
+      GEMINI_CLI_SYSTEM_DEFAULTS_PATH: defaults,
+    };
+    const run = () =>
+      cli.run({
+        arguments: ["setup", "--client", "gemini_cli", "--yes", "--json"],
+        cwd: home,
+        environment,
+      });
+    // The intersection compares names case-insensitively, so the spelling that
+    // survives must not decide the outcome: the same pair of policies in
+    // either arrangement has to consolidate to the same decision.
+    for (const [systemSpelling, defaultSpelling] of [
+      ["REA", "rea"],
+      ["rea", "REA"],
+    ]) {
+      await writeFile(
+        system,
+        JSON.stringify({ mcp: { allowed: [systemSpelling] } }),
+      );
+      await writeFile(
+        defaults,
+        JSON.stringify({ mcp: { allowed: [defaultSpelling] } }),
+      );
+      const result = await run();
+      expect(result.exitCode, `${systemSpelling}+${defaultSpelling}`).toBe(0);
+      expect(result.json, `${systemSpelling}+${defaultSpelling}`).toMatchObject(
+        {
+          status: "ready",
+        },
+      );
+    }
+  },
+);
+
+cliTest(
   "OpenCode doctor sees a global registration when the custom directory is absent",
   async ({ cli }) => {
     const home = await createTestTempDirectory("rea-opencode-absent-custom-");
