@@ -83,6 +83,9 @@ explicit path or endpoint and do not need it.
   frames; use `match_offset` / `match_limit` for later pages, or explicit null
   limit for complete matching output. Preserve the source digest across pages.
   This does not perform live capture.
+- Decoder discovery: `inspect_signal_decoders` searches installed decoder IDs
+  or selected decoder help, including channels and options. Query and page the
+  relevant details before choosing settings; this does not scan hardware.
 - Recorded logic/signal traces: `decode_signal_recording` with explicit decoder,
   channel and protocol settings. On Linux with util-linux prlimit, supply sigrok-cli 0.7.2 through
   `REA_SIGROK_COMMAND`; see [recording guide](https://github.com/morluto/rea/blob/main/docs/signal-recordings.md).
