@@ -1060,6 +1060,57 @@ describe("NIBArchive UIKit event connections", () => {
       "UIRuntimeEventConnection",
     );
   });
+
+  it("reports a runtime connection with no resolvable owner as an omission", async () => {
+    const root = await createTestTempDirectory("rea-ib-ownerless-");
+    const bundle = join(root, "Example.app");
+    await mkdir(bundle, { recursive: true });
+    // The connector is recognized by class, but carries no UISource reference,
+    // so no connection can be projected from it.
+    await writeFile(
+      join(bundle, "Cell.nib"),
+      encodeNibArchiveFixture({
+        classes: [
+          "UIProxyObject",
+          "UIClassSwapper",
+          "UIButton",
+          "UIRuntimeEventConnection",
+          "NSString",
+        ],
+        objects: [
+          { classIndex: 0, values: { UIProxiedObjectIdentifier: { ref: 5 } } },
+          { classIndex: 1, values: { UIClassName: { ref: 6 } } },
+          { classIndex: 2, values: {} },
+          {
+            classIndex: 3,
+            values: { UIDestination: { ref: 1 }, UIEventMask: 64 },
+          },
+          { classIndex: 2, values: {} },
+          { classIndex: 4, values: { "NS.bytes": "IBFilesOwner" } },
+          { classIndex: 4, values: { "NS.bytes": "BuildCell" } },
+        ],
+      }),
+    );
+
+    const analysis = await analyzeInterfaceBuilderBundle({
+      bundlePath: bundle,
+      targetSha256: "e".repeat(64),
+    });
+
+    expect(analysis.graph.coverage).toContainEqual(
+      expect.objectContaining({
+        facet: "connections:Cell.nib",
+        status: "partial",
+        reason: "connection_unresolved",
+        examined: 0,
+        omitted: 1,
+      }),
+    );
+    expect(analysis.graph.truncated).toBe(true);
+    expect(analysis.limitations).toContain(
+      "Some recognized NIBArchive connectors declare no resolvable owner; they carry no connection evidence and are reported as omissions.",
+    );
+  });
 });
 
 // This exact file is already selected by the unchanged native Apple CI lane.
