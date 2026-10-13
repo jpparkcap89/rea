@@ -2,7 +2,10 @@ import {
   type InspectSignalDecodersInput,
   signalDecodersSchema,
 } from "../domain/signals/signalDecoders.js";
-import { parseDecoderDiscovery } from "./parseDecoderDiscovery.js";
+import {
+  DecoderDiscoveryBudgetError,
+  parseDecoderDiscovery,
+} from "./parseDecoderDiscovery.js";
 import {
   readLinuxResourceLimits,
   type LinuxResourceLimits,
@@ -422,6 +425,19 @@ export class SigrokRecordingProvider implements SignalRecordingPort {
       (cause instanceof ArtifactReaderFailure && cause.reason === "cancelled")
     )
       return new AnalysisCancelledError(operation, { cause });
+    if (cause instanceof DecoderDiscoveryBudgetError)
+      return new AnalysisResourceConstraintError(
+        operation,
+        "memory",
+        cause.message,
+        { line_budget: 65536 },
+        {
+          cause,
+          ...(observedOutput === undefined
+            ? {}
+            : { capturedOutput: observedOutput }),
+        },
+      );
     const reason = cause instanceof Error ? cause.message : String(cause);
     if (cause instanceof OwnedCommandFailure)
       return this.#resources.commandFailure(

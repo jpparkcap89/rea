@@ -129,6 +129,8 @@ A filtered empty page is not evidence that the installation has no decoders.
 
 Discovery refuses more than 65,535 line separators before constructing record
 objects (65,536-line representation budget), in addition to the 4 MiB output cap.
+Exceeding that budget is a resource failure with captured output. Returned text
+is copied so a retained page does not keep the complete producer output alive.
 
 Discovery shares decoding's owned process, admission slot, resource limits,
 cleanup retries and Evidence delivery. It records the executable and limiter

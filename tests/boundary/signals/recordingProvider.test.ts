@@ -29,6 +29,7 @@ else if (${JSON.stringify(mode)} === 'bad-version') console.log('unexpected vers
 else if (${JSON.stringify(mode)} === 'nonzero') { console.error('invalid decoder'); process.exitCode = 1; }
 else if (${JSON.stringify(mode)} === 'malformed-copy') { chmodSync('recording', 0o600); writeFileSync('recording', 'changed'); }
 else if (${JSON.stringify(mode)} === 'oversized-copy') { chmodSync('recording', 0o600); truncateSync('recording', 32 * 1024 * 1024 + 1); }
+else if (${JSON.stringify(mode)} === 'line-budget') process.stdout.write('ID: uart' + '\\n'.repeat(65536));
 else if (${JSON.stringify(mode)} === 'overflow') process.stdout.write('x'.repeat(5 * 1024 * 1024));
 else if (${JSON.stringify(mode)} === 'wait') { console.log('ready'); setInterval(() => {}, 1000); }
 else if (${JSON.stringify(mode)} === 'many') process.stdout.write(Array.from({length:90},(_,i)=>'line '+(i+1)+'\\r\\n').join(''));
@@ -514,26 +515,38 @@ it("attributes discovery admission failures to discovery while sharing the decod
   });
 });
 
-it.each(["bad-version", "nonzero", "overflow", "wait", "oversized-tool"])(
-  "preserves discovery failure diagnostics: %s",
-  async (mode) => {
-    const f = await fixture(mode);
-    const result = await f.service.inspectDecoders(
-      {},
-      { signal: f.controller.signal },
-    );
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error("Expected failure");
+it.each([
+  "bad-version",
+  "nonzero",
+  "overflow",
+  "line-budget",
+  "wait",
+  "oversized-tool",
+])("preserves discovery failure diagnostics: %s", async (mode) => {
+  const f = await fixture(mode);
+  const result = await f.service.inspectDecoders(
+    {},
+    { signal: f.controller.signal },
+  );
+  expect(result.ok).toBe(false);
+  if (result.ok) throw new Error("Expected failure");
+  expect(result.error).toMatchObject({
+    operation: "inspect_signal_decoders",
+  });
+  if (mode === "line-budget") {
     expect(result.error).toMatchObject({
-      operation: "inspect_signal_decoders",
+      _tag: "AnalysisResourceConstraintError",
     });
-    if (mode === "bad-version")
-      expect(result.error.capturedOutput).toMatchObject({
-        stdout: "sigrok-cli 0.7.1\n",
-        stderr: "version warning\n",
-      });
-  },
-);
+    expect(result.error.capturedOutput?.stdout).toBe(
+      "ID: uart" + "\n".repeat(65536),
+    );
+  }
+  if (mode === "bad-version")
+    expect(result.error.capturedOutput).toMatchObject({
+      stdout: "sigrok-cli 0.7.1\n",
+      stderr: "version warning\n",
+    });
+});
 
 it("retains completed discovery when cleanup fails, then retries before accepting work", async () => {
   const f = await fixture("ok", true);

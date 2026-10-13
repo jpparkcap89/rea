@@ -1,5 +1,10 @@
 import type { InspectSignalDecodersInput } from "../domain/signals/signalDecoders.js";
 
+export class DecoderDiscoveryBudgetError extends Error {}
+
+const copyText = (value: string): string =>
+  Buffer.from(value, "utf16le").toString("utf16le");
+
 /** Parse only the 0.7.2 catalog grammar; help remains literal producer text. */
 export const parseDecoderDiscovery = (
   text: string,
@@ -10,7 +15,7 @@ export const parseDecoderDiscovery = (
   let separators = 0;
   for (const character of text)
     if (character === "\n" && ++separators >= 65536)
-      throw new Error(
+      throw new DecoderDiscoveryBudgetError(
         "Decoder discovery exceeds the 65,536-line representation budget",
       );
   const lines = text.split(/\r?\n/u);
@@ -52,7 +57,14 @@ export const parseDecoderDiscovery = (
     input.limit ?? matching.length,
     matching.length - start,
   );
-  const page = matching.slice(start, start + count);
+  // Keep retained pages independent of the complete producer-output allocation.
+  const page = matching
+    .slice(start, start + count)
+    .map((record) =>
+      "id" in record
+        ? { id: copyText(record.id), name: copyText(record.name) }
+        : { line_number: record.line_number, text: copyText(record.text) },
+    );
   return {
     decoders: catalog ? page : [],
     help_lines: catalog ? [] : page,

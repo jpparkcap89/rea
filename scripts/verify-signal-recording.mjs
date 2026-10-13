@@ -70,6 +70,19 @@ lines.push(`#${tick + 1000}`, "1!");
 const source = lines.join("\n") + "\n";
 let cases = 0;
 const discoveryMeasurements = [];
+const inheritedAddressSpace = (await readFile("/proc/self/limits", "utf8"))
+  .split("\n")
+  .find((line) => line.startsWith("Max address space "))
+  ?.trim()
+  .match(/^Max address space\s+(\S+)\s+(\S+)\s+bytes$/u);
+assert.ok(inheritedAddressSpace);
+const expectedAddressSpace = Math.min(
+  1073741824,
+  ...inheritedAddressSpace
+    .slice(1)
+    .map((value) => (value === "unlimited" ? Infinity : Number(value))),
+);
+
 try {
   await writeFile(path, source);
   await client.connect(transport);
@@ -106,14 +119,16 @@ try {
       createHash("sha256").update(source).digest("hex"),
     );
     assert.equal(report.hardware_acquisition, "not-performed");
-    assert.equal(report.limits.address_space_bytes, 1073741824);
+    assert.equal(report.limits.address_space_bytes, expectedAddressSpace);
     assert.equal(report.tool.configured_path, process.env.REA_SIGROK_COMMAND);
     assert.equal(
       report.resource_limiter.configured_path,
       process.env.REA_SIGROK_PRLIMIT_COMMAND ?? "/usr/bin/prlimit",
     );
     assert.ok(
-      report.resource_limiter.arguments.includes("--as=1073741824:1073741824"),
+      report.resource_limiter.arguments.includes(
+        `--as=${expectedAddressSpace}:${expectedAddressSpace}`,
+      ),
     );
     assert.equal(report.diagnostics, "");
     const flags = Object.entries(input)
