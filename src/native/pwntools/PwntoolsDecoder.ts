@@ -46,6 +46,7 @@ import {
   PWNTOOLS_PROVIDER_IDENTITY,
   PWNTOOLS_LIMITS,
 } from "./PwntoolsRelease.js";
+import { pwntoolsInputBytes } from "./PwntoolsInputLimit.js";
 
 const HOST_REQUIREMENT =
   "The initial real-verified pwntools artifact profile supports Linux x64 only.";
@@ -238,11 +239,20 @@ export class PwntoolsDecoder<
           undefined,
           context,
         );
+      const inputLimit = pwntoolsInputBytes(this.environment);
+      if (!inputLimit.configured)
+        throw pwntoolsUnavailable(
+          inputLimit.error,
+          selectedPath,
+          undefined,
+          undefined,
+          context,
+        );
       phase = "artifact-read";
       selectedPath = input.path;
       const snapshot = await readStableArtifact(
         input.path,
-        PWNTOOLS_LIMITS.inputBytes,
+        inputLimit.bytes,
         options?.signal,
       );
       phase = "decoder";
