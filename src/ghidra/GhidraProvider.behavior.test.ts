@@ -8,7 +8,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
+import * as windowsNativeLoader from "../windows/WindowsNativeLoader.js";
+import { WINDOWS_NATIVE_AUTHORITY_UNAVAILABLE_REASON } from "../process/WindowsAuthority.js";
 import { fixtureDosLoadImage } from "./GhidraLoadImage.fixture.js";
 import { fixtureRawBinaryLoadImage } from "./GhidraRawBinaryLoadImage.fixture.js";
 import {
@@ -324,6 +326,16 @@ describe("Ghidra platform support", () => {
   });
 
   it("keeps Windows P0 unavailable until native isolation authority exists", () => {
+    // This case requires absent authority, even on a host with a built addon.
+    if (process.platform === "win32") {
+      const unavailable = vi
+        .spyOn(windowsNativeLoader, "systemWindowsNativeAuthority")
+        .mockReturnValue({
+          available: false,
+          reason: WINDOWS_NATIVE_AUTHORITY_UNAVAILABLE_REASON,
+        });
+      onTestFinished(() => unavailable.mockRestore());
+    }
     const ghidra = provider({ ...installationHost(), platform: "win32" });
     const nativeApplication = peTarget("x86_64");
 

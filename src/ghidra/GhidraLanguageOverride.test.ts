@@ -40,7 +40,7 @@ const X86_LDEFS = `<?xml version="1.0" encoding="UTF-8"?>
 
 // Fake installation inspection; the language catalog is a real directory.
 const host: GhidraInstallationHost = {
-  platform: "linux",
+  platform: process.platform,
   architecture: "x64",
   readText: () => "application.version=12.1.4\n",
   executable: () => true,
